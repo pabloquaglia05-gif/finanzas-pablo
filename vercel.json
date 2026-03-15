@@ -1,4 +1,1 @@
-{
-  "builds": [{ "src": "package.json", "use": "@vercel/create-react-app" }],
-  "routes": [{ "src": "/(.*)", "dest": "/" }]
-}
+{}
