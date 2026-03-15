@@ -32,50 +32,57 @@ export default function Dashboard() {
   }, [])
 
   const mesStr = MESES[mes]
+  const mesKey = `${mesStr}/${String(anio).slice(2)}`
+
+  // Movimientos del mes
   const movMes = movimientos.filter(m => {
     const d = new Date(m.fecha)
     return d.getFullYear() === anio && d.getMonth() === mes
   })
 
+  // Tarjetas del mes (pagadas o pendientes — son gastos reales del mes)
+  const tcMes = tarjetas.filter(t => t.mes_a_pagar === mesKey)
+  const tcMesPendiente = tcMes.filter(t => t.estado === 'Pendiente').reduce((a, b) => a + Number(b.valor_cuota), 0)
+  const tcMesPagado = tcMes.filter(t => t.estado === 'Pagado').reduce((a, b) => a + Number(b.valor_cuota), 0)
+  const totalTC = tcMesPendiente + tcMesPagado
+
+  // Totales del mes incluyendo tarjetas
   const ingresos = movMes.filter(m => m.tipo === 'Ingreso').reduce((a, b) => a + Number(b.monto), 0)
-  const gastos = movMes.filter(m => m.tipo === 'Gasto').reduce((a, b) => a + Number(b.monto), 0)
-  const balance = ingresos - gastos
-  const ahorro = ingresos > 0 ? ((ingresos - gastos) / ingresos * 100).toFixed(1) : 0
+  const gastosMov = movMes.filter(m => m.tipo === 'Gasto').reduce((a, b) => a + Number(b.monto), 0)
+  const gastosTotal = gastosMov + totalTC
+  const balance = ingresos - gastosTotal
+  const ahorro = ingresos > 0 ? ((ingresos - gastosTotal) / ingresos * 100).toFixed(1) : 0
 
-  // Tarjetas pendientes del mes
-  const tcMes = tarjetas.filter(t => t.mes_a_pagar === `${mesStr}/${String(anio).slice(2)}` && t.estado === 'Pendiente')
-  const totalTC = tcMes.reduce((a, b) => a + Number(b.valor_cuota), 0)
-
-  // Gastos por categoría del mes
+  // Gastos por categoría (movimientos + tarjetas del mes)
   const porCat = {}
   movMes.filter(m => m.tipo === 'Gasto').forEach(m => {
     porCat[m.categoria] = (porCat[m.categoria] || 0) + Number(m.monto)
   })
-  const catData = Object.entries(porCat).sort((a,b) => b[1]-a[1]).slice(0,6).map(([name, value]) => ({ name, value }))
+  tcMes.forEach(t => {
+    porCat[t.categoria] = (porCat[t.categoria] || 0) + Number(t.valor_cuota)
+  })
+  const catData = Object.entries(porCat).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value }))
 
-  // Resumen anual (últimos 6 meses)
+  // Gráfico 6 meses
   const anualData = []
   for (let i = 5; i >= 0; i--) {
     let m = mes - i
     let y = anio
     if (m < 0) { m += 12; y-- }
+    const mk = `${MESES[m]}/${String(y).slice(2)}`
     const movs = movimientos.filter(mv => {
       const d = new Date(mv.fecha)
       return d.getFullYear() === y && d.getMonth() === m
     })
+    const tcMesG = tarjetas.filter(t => t.mes_a_pagar === mk)
+    const gasTC = tcMesG.reduce((a, b) => a + Number(b.valor_cuota), 0)
     anualData.push({
-      name: MESES[m].slice(0,3),
-      Ingresos: movs.filter(mv => mv.tipo === 'Ingreso').reduce((a,b) => a+Number(b.monto), 0),
-      Gastos: movs.filter(mv => mv.tipo === 'Gasto').reduce((a,b) => a+Number(b.monto), 0),
+      name: MESES[m].slice(0, 3),
+      Ingresos: movs.filter(mv => mv.tipo === 'Ingreso').reduce((a, b) => a + Number(b.monto), 0),
+      Gastos: movs.filter(mv => mv.tipo === 'Gasto').reduce((a, b) => a + Number(b.monto), 0) + gasTC,
     })
   }
 
-  const prevMes = mes === 0 ? 11 : mes - 1
-  const prevAnio = mes === 0 ? anio - 1 : anio
-  const movPrev = movimientos.filter(m => {
-    const d = new Date(m.fecha)
-    return d.getFullYear() === prevAnio && d.getMonth() === prevMes
-  })
   const ultimos = movimientos.slice(0, 5)
 
   if (loading) return <div className="loading">Cargando...</div>
@@ -89,9 +96,9 @@ export default function Dashboard() {
 
       {/* Selector mes */}
       <div className="month-selector">
-        <button className="month-btn" onClick={() => { if (mes === 0) { setMes(11); setAnio(a=>a-1) } else setMes(m=>m-1) }}>‹</button>
+        <button className="month-btn" onClick={() => { if (mes === 0) { setMes(11); setAnio(a => a - 1) } else setMes(m => m - 1) }}>‹</button>
         <span className="month-display">{MESES[mes]} {anio}</span>
-        <button className="month-btn" onClick={() => { if (mes === 11) { setMes(0); setAnio(a=>a+1) } else setMes(m=>m+1) }}>›</button>
+        <button className="month-btn" onClick={() => { if (mes === 11) { setMes(0); setAnio(a => a + 1) } else setMes(m => m + 1) }}>›</button>
       </div>
 
       {/* Stats */}
@@ -102,7 +109,8 @@ export default function Dashboard() {
         </div>
         <div className="stat-card red">
           <div className="stat-label">Gastos del mes</div>
-          <div className="stat-value red">{fmt(gastos)}</div>
+          <div className="stat-value red">{fmt(gastosTotal)}</div>
+          {totalTC > 0 && <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>incl. {fmt(totalTC)} en tarjetas</div>}
         </div>
         <div className="stat-card blue">
           <div className="stat-label">Balance</div>
@@ -110,15 +118,15 @@ export default function Dashboard() {
         </div>
         <div className="stat-card yellow">
           <div className="stat-label">% Ahorro</div>
-          <div className={`stat-value ${ahorro >= 0 ? 'green' : 'red'}`}>{ahorro}%</div>
+          <div className={`stat-value ${Number(ahorro) >= 0 ? 'green' : 'red'}`}>{ahorro}%</div>
         </div>
         <div className="stat-card blue">
           <div className="stat-label">Tarjetas pendientes {mesStr}</div>
-          <div className="stat-value blue">{fmt(totalTC)}</div>
+          <div className="stat-value blue">{fmt(tcMesPendiente)}</div>
         </div>
         <div className="stat-card yellow">
           <div className="stat-label">Movimientos del mes</div>
-          <div className="stat-value yellow">{movMes.length}</div>
+          <div className="stat-value yellow">{movMes.length + tcMes.length}</div>
         </div>
       </div>
 
@@ -130,10 +138,10 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={anualData} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <XAxis dataKey="name" tick={{ fill: '#8b91a8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#8b91a8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+                <YAxis tick={{ fill: '#8b91a8', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={v => fmt(v)} contentStyle={{ background: '#1a1d27', border: '1px solid #2e3347', borderRadius: 8 }} />
-                <Bar dataKey="Ingresos" fill="#22c55e" radius={[4,4,0,0]} />
-                <Bar dataKey="Gastos" fill="#ef4444" radius={[4,4,0,0]} />
+                <Bar dataKey="Ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -145,7 +153,9 @@ export default function Dashboard() {
             <div className="chart-container">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={catData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => `${name.slice(0,10)} ${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+                  <Pie data={catData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
+                    label={({ name, percent }) => `${name.slice(0, 10)} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false} fontSize={10}>
                     {catData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={v => fmt(v)} contentStyle={{ background: '#1a1d27', border: '1px solid #2e3347', borderRadius: 8 }} />
