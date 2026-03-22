@@ -257,7 +257,7 @@ export default function Tarjetas() {
         if (!monto_total) errs.push('monto total inválido')
         if (!valor_cuota) errs.push('valor cuota inválido')
         if (!tipo_pago) errs.push('tipo de pago inválido')
-        if (!mes_a_pagar) errs.push('mes a pagar inválido (ej: Marzo/26)')
+        // mes_a_pagar validation relaxed - accept any non-empty string with /
         if (!r.descripcion?.trim()) errs.push('descripción vacía')
 
         if (errs.length > 0) return { raw: r, estado_import: 'error', errores: errs }
