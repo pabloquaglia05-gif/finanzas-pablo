@@ -482,8 +482,15 @@ export default function Tarjetas() {
               <thead><tr><th>Mes</th><th>BBVA</th><th>Mercado Pago</th><th>Total</th></tr></thead>
               <tbody>
                 {Object.entries(resumenMeses).sort((a, b) => {
-                  const [mA, yA] = a[0].split('/'); const [mB, yB] = b[0].split('/')
-                  return yA !== yB ? yA - yB : MESES.indexOf(mA) - MESES.indexOf(mB)
+                  const parseMesSort = (s) => {
+                    const parts = s.split('/')
+                    const anio = parseInt(parts[parts.length - 1]) || 0
+                    const mesNombre = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase()
+                    const normalize = x => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    const idx = MESES.findIndex(m => normalize(m).toLowerCase().startsWith(normalize(mesNombre).toLowerCase().slice(0, 3)))
+                    return anio * 100 + (idx >= 0 ? idx : 99)
+                  }
+                  return parseMesSort(a[0]) - parseMesSort(b[0])
                 }).map(([mes, val]) => (
                   <tr key={mes}>
                     <td style={{ fontWeight: 600 }}>{mes}</td>
