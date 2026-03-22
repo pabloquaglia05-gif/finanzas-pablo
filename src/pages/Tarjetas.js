@@ -86,13 +86,16 @@ function parseEstado(str) {
 function parseMesAPagar(str) {
   if (!str) return null
   str = String(str).trim()
-  // Formato: Marzo/26 o Marzo/2026
-  const m = str.match(/^([A-Za-záéíóúÁÉÍÓÚ]+)\/(\d{2,4})$/)
-  if (!m) return null
-  const mesNombre = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
-  const anio = m[2].length === 2 ? m[2] : m[2].slice(2)
-  if (!MESES.includes(mesNombre)) return null
-  return `${mesNombre}/${anio}`
+  const normalize = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  const parts = str.split("/")
+  if (parts.length < 2) return null
+  const mesRaw = parts[0].trim()
+  const anioRaw = parts[parts.length - 1].trim()
+  const mesNorm = normalize(mesRaw).charAt(0).toUpperCase() + normalize(mesRaw).slice(1).toLowerCase()
+  const mesIdx = MESES.findIndex(m => normalize(m).toLowerCase() === mesNorm.toLowerCase())
+  if (mesIdx === -1) return null
+  const anio = anioRaw.length === 4 ? anioRaw.slice(2) : anioRaw.padStart(2, "0")
+  return MESES[mesIdx] + "/" + anio
 }
 
 function parseCSV(text) {
