@@ -18,13 +18,13 @@ function siguienteMes(mesStr) {
 }
 
 function exportToCSV(items) {
-  const headers = ['Fecha Compra','Tarjeta','Descripción','Categoría','Tipo de Pago','Monto Total','Cuotas','Valor Cuota','Mes a Pagar','Estado']
+  const headers = ['Fecha Compra','Tarjeta','Descripcion','Categoria','Tipo de Pago','Monto Total','Cuotas','Valor Cuota','Mes a Pagar','Estado']
   const rows = items.map(i => [
     new Date(i.fecha_compra).toLocaleDateString('es-AR'),
     i.tarjeta, i.descripcion, i.categoria, i.tipo_pago,
     i.monto_total, i.cuotas, i.valor_cuota, i.mes_a_pagar, i.estado
   ])
-  const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+  const csv = [headers, ...rows].map(r => r.join(';')).join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = 'tarjetas.csv'; a.click()
@@ -32,12 +32,11 @@ function exportToCSV(items) {
 }
 
 function downloadTemplate() {
-  const t = `Fecha Compra,Tarjeta,Descripción,Categoría,Tipo de Pago,Monto Total,Cuotas,Valor Cuota,Mes a Pagar,Estado
-01/03/2026,BBVA,Supermercado Día,Alimentación,Pago Único,25000,1,25000,Marzo/26,Pendiente
-15/02/2026,BBVA,Zapatillas Nike,Ropa / Indumentaria,Cuotas,30000,3,10000,Marzo/26,Pendiente
-15/02/2026,BBVA,Zapatillas Nike,Ropa / Indumentaria,Cuotas,30000,3,10000,Abril/26,Pendiente
-15/02/2026,BBVA,Zapatillas Nike,Ropa / Indumentaria,Cuotas,30000,3,10000,Mayo/26,Pendiente
-10/01/2026,Mercado Pago,Netflix,Entretenimiento,Pago Único,5000,1,5000,Marzo/26,Pendiente`
+  const t = `Fecha Compra;Tarjeta;Descripcion;Categoria;Tipo de Pago;Monto Total;Cuotas;Valor Cuota;Mes a Pagar;Estado
+01/03/2026;BBVA;Supermercado;Alimentacion;Pago Unico;25000;1;25000;Abril/26;Pendiente
+15/02/2026;BBVA;Zapatillas Nike;Ropa;Cuotas;30000;3;10000;Abril/26;Pendiente
+15/02/2026;BBVA;Zapatillas Nike;Ropa;Cuotas;30000;3;10000;Mayo/26;Pendiente
+15/02/2026;BBVA;Zapatillas Nike;Ropa;Cuotas;30000;3;10000;Junio/26;Pendiente`
   const blob = new Blob(['\uFEFF' + t], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a'); a.href = url; a.download = 'plantilla_tarjetas.csv'; a.click()
@@ -52,8 +51,7 @@ function parseDate(str) {
     const y = m[3].length === 2 ? '20' + m[3] : m[3]
     return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`
   }
-  m = str.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (m) return str
+  if (str.match(/^\d{4}-\d{2}-\d{2}$/)) return str
   return null
 }
 
@@ -66,8 +64,8 @@ function parseMonto(str) {
 function parseTipoPago(str) {
   const s = String(str || '').toLowerCase().trim()
   if (s.includes('cuota')) return 'Cuotas'
-  if (s.includes('único') || s.includes('unico') || s.includes('pago') || s === 'u') return 'Pago Único'
-  return null
+  if (s.includes('nico') || s.includes('unico') || s.includes('pago') || s === 'u') return 'Pago Único'
+  return 'Pago Único' // default
 }
 
 function parseTarjeta(str) {
@@ -83,23 +81,20 @@ function parseEstado(str) {
   return 'Pendiente'
 }
 
+// Accept any string that looks like a month/year
 function parseMesAPagar(str) {
   if (!str) return null
   str = String(str).trim()
   if (!str) return null
-  // Accept any format — just clean it up
-  // Try to match Mes/YY or Mes/YYYY
-  const m = str.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ]+)[\s\/\-]+([0-9]{2,4})$/)
-  if (m) {
-    const mesRaw = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
-    const anio = m[2].length === 4 ? m[2].slice(2) : m[2].padStart(2, "0")
-    const normalize = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    const mesIdx = MESES.findIndex(mes => normalize(mes).toLowerCase() === normalize(mesRaw).toLowerCase())
-    if (mesIdx >= 0) return MESES[mesIdx] + "/" + anio
+  // Already valid format - just return it
+  if (str.match(/^[A-Za-záéíóúÁÉÍÓÚ]+\/\d{2,4}$/)) return str
+  // Try to build it
+  const parts = str.split(/[\/\-\s]+/)
+  if (parts.length >= 2) {
+    const anio = parts[parts.length-1].length === 4 ? parts[parts.length-1].slice(2) : parts[parts.length-1]
+    return parts[0] + '/' + anio
   }
-  // If it already looks like a valid entry just return it as-is
-  if (str.includes("/")) return str
-  return null
+  return str.length > 0 ? str : null
 }
 
 function parseCSV(text) {
@@ -116,29 +111,22 @@ function parseCSV(text) {
     cols.push(cur.trim())
     return cols
   }
-  const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/[^a-záéíóúñ]/g, ''))
   const rows = []
   for (let i = 1; i < lines.length; i++) {
     const cols = parseRow(lines[i])
     if (cols.every(c => !c)) continue
-    const get = (names, idx) => {
-      for (const n of names) {
-        const hi = headers.findIndex(h => h.includes(n))
-        if (hi >= 0 && cols[hi] !== undefined) return cols[hi]
-      }
-      return cols[idx] || ''
-    }
+    // Use position directly — more reliable than header matching
     rows.push({
-      fecha_compra: get(['fecha','date','fec'], 0),
-      tarjeta:      get(['tarjeta','card','banco'], 1),
-      descripcion:  get(['desc','detalle','concepto','nombre'], 2),
-      categoria:    get(['categ','cat'], 3),
-      tipo_pago:    get(['tipo','pago','type'], 4),
-      monto_total:  get(['montototal','total','monto'], 5),
-      cuotas:       get(['cuota'], 6),
-      valor_cuota:  get(['valorcuota','valor'], 7),
-      mes_a_pagar:  cols[8] || get(['mesapagar','mes','pagar'], 8),
-      estado:       get(['estado','status'], 9),
+      fecha_compra: cols[0] || '',
+      tarjeta:      cols[1] || '',
+      descripcion:  cols[2] || '',
+      categoria:    cols[3] || '',
+      tipo_pago:    cols[4] || '',
+      monto_total:  cols[5] || '',
+      cuotas:       cols[6] || '1',
+      valor_cuota:  cols[7] || '',
+      mes_a_pagar:  cols[8] || '',
+      estado:       cols[9] || 'Pendiente',
     })
   }
   return rows
@@ -160,6 +148,7 @@ export default function Tarjetas() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [editItem, setEditItem] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -169,6 +158,7 @@ export default function Tarjetas() {
   const [filtroMes, setFiltroMes] = useState(MES_ACTUAL)
   const [filtroEstado, setFiltroEstado] = useState('Todos')
   const [tab, setTab] = useState('lista')
+  const [selected, setSelected] = useState(new Set())
   const fileRef = useRef()
 
   const load = async () => {
@@ -179,6 +169,7 @@ export default function Tarjetas() {
     ])
     setItems(tc || [])
     setCategorias(cats || [])
+    setSelected(new Set())
     setLoading(false)
   }
 
@@ -201,33 +192,97 @@ export default function Tarjetas() {
     else resumenMeses[i.mes_a_pagar].mp += Number(i.valor_cuota)
   })
 
-  // ── NUEVA COMPRA MANUAL ──────────────────────────────────────
+  // ── NUEVA COMPRA ─────────────────────────────────────────────
+  const openNew = () => { setEditItem(null); setForm(EMPTY_FORM); setShowModal(true) }
+
+  const openEdit = (item) => {
+    setEditItem(item)
+    setForm({
+      fecha_compra: item.fecha_compra,
+      tarjeta: item.tarjeta,
+      descripcion: item.descripcion,
+      categoria: item.categoria,
+      tipo_pago: item.tipo_pago,
+      monto_total: item.monto_total,
+      cuotas: item.cuotas,
+      mes_inicio: item.mes_a_pagar,
+      estado: item.estado
+    })
+    setShowModal(true)
+  }
+
   const save = async () => {
     if (!form.fecha_compra || !form.descripcion || !form.categoria || !form.monto_total) return alert('Completá todos los campos')
     setSaving(true)
-    const numCuotas = form.tipo_pago === 'Cuotas' ? Number(form.cuotas) : 1
-    const valorCuota = Math.round((Number(form.monto_total) / numCuotas) * 100) / 100
-    const filas = []
-    let mesActual = form.mes_inicio
-    for (let n = 1; n <= numCuotas; n++) {
-      filas.push({
-        fecha_compra: form.fecha_compra, tarjeta: form.tarjeta,
-        descripcion: numCuotas > 1 ? `${form.descripcion} (${n}/${numCuotas})` : form.descripcion,
-        categoria: form.categoria, tipo_pago: form.tipo_pago,
-        monto_total: Number(form.monto_total), cuotas: numCuotas,
-        valor_cuota: valorCuota, mes_a_pagar: mesActual, estado: 'Pendiente'
-      })
-      mesActual = siguienteMes(mesActual)
+
+    if (editItem) {
+      // Editar registro existente
+      const { error } = await supabase.from('tarjeta_credito').update({
+        fecha_compra: form.fecha_compra,
+        tarjeta: form.tarjeta,
+        descripcion: form.descripcion,
+        categoria: form.categoria,
+        tipo_pago: form.tipo_pago,
+        monto_total: Number(form.monto_total),
+        cuotas: Number(form.cuotas),
+        valor_cuota: Math.round((Number(form.monto_total) / Number(form.cuotas)) * 100) / 100,
+        mes_a_pagar: form.mes_inicio,
+        estado: form.estado || 'Pendiente'
+      }).eq('id', editItem.id)
+      if (!error) { setShowModal(false); setEditItem(null); setForm(EMPTY_FORM); load() }
+      else alert('Error: ' + error.message)
+    } else {
+      // Nueva compra — generar una fila por cuota
+      const numCuotas = form.tipo_pago === 'Cuotas' ? Number(form.cuotas) : 1
+      const valorCuota = Math.round((Number(form.monto_total) / numCuotas) * 100) / 100
+      const filas = []
+      let mesActual = form.mes_inicio
+      for (let n = 1; n <= numCuotas; n++) {
+        filas.push({
+          fecha_compra: form.fecha_compra, tarjeta: form.tarjeta,
+          descripcion: numCuotas > 1 ? `${form.descripcion} (${n}/${numCuotas})` : form.descripcion,
+          categoria: form.categoria, tipo_pago: form.tipo_pago,
+          monto_total: Number(form.monto_total), cuotas: numCuotas,
+          valor_cuota: valorCuota, mes_a_pagar: mesActual, estado: 'Pendiente'
+        })
+        mesActual = siguienteMes(mesActual)
+      }
+      const { error } = await supabase.from('tarjeta_credito').insert(filas)
+      if (!error) { setShowModal(false); setForm(EMPTY_FORM); load() }
+      else alert('Error: ' + error.message)
     }
-    const { error } = await supabase.from('tarjeta_credito').insert(filas)
-    if (!error) { setShowModal(false); setForm(EMPTY_FORM); load() }
-    else alert('Error: ' + error.message)
     setSaving(false)
   }
 
   const toggleEstado = async (item) => {
     const nuevo = item.estado === 'Pendiente' ? 'Pagado' : 'Pendiente'
     await supabase.from('tarjeta_credito').update({ estado: nuevo }).eq('id', item.id)
+    load()
+  }
+
+  // ── SELECCIÓN MÚLTIPLE ───────────────────────────────────────
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtrados.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(filtrados.map(i => i.id)))
+    }
+  }
+
+  const deleteSelected = async () => {
+    if (selected.size === 0) return
+    if (!window.confirm(`¿Eliminar ${selected.size} registro${selected.size > 1 ? 's' : ''}?`)) return
+    const ids = Array.from(selected)
+    await supabase.from('tarjeta_credito').delete().in('id', ids)
     load()
   }
 
@@ -244,7 +299,7 @@ export default function Tarjetas() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       const rows = parseCSV(ev.target.result)
-      const result = rows.map((r, i) => {
+      const result = rows.map(r => {
         const fecha = parseDate(r.fecha_compra)
         const tarjeta = parseTarjeta(r.tarjeta)
         const monto_total = parseMonto(r.monto_total)
@@ -256,14 +311,11 @@ export default function Tarjetas() {
         if (!tarjeta) errs.push('tarjeta debe ser BBVA o Mercado Pago')
         if (!monto_total) errs.push('monto total inválido')
         if (!valor_cuota) errs.push('valor cuota inválido')
-        if (!tipo_pago) errs.push('tipo de pago inválido')
-        // mes_a_pagar validation relaxed - accept any non-empty string with /
         if (!r.descripcion?.trim()) errs.push('descripción vacía')
-
+        if (!mes_a_pagar) errs.push('mes a pagar inválido')
         if (errs.length > 0) return { raw: r, estado_import: 'error', errores: errs }
         return {
-          fecha_compra: fecha,
-          tarjeta,
+          fecha_compra: fecha, tarjeta,
           descripcion: r.descripcion.trim(),
           categoria: r.categoria?.trim() || 'Otros Gastos',
           tipo_pago,
@@ -283,10 +335,10 @@ export default function Tarjetas() {
 
   const confirmImport = async () => {
     const validos = preview.filter(r => r.estado_import === 'valido')
-    if (validos.length === 0) return alert('No hay registros válidos para importar')
+    if (validos.length === 0) return
     setImporting(true)
     const { error } = await supabase.from('tarjeta_credito').insert(
-      validos.map(({ estado_import, ...r }) => r)
+      validos.map(({ estado_import, raw, ...r }) => r)
     )
     if (!error) { setImportStep('done'); load() }
     else alert('Error: ' + error.message)
@@ -308,14 +360,14 @@ export default function Tarjetas() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div className="page-title">Tarjetas de Crédito</div>
-          <div className="page-subtitle">BBVA y Mercado Pago — cada cuota en su mes</div>
+          <div className="page-subtitle">BBVA y Mercado Pago</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn" style={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text2)' }}
             onClick={() => exportToCSV(filtrados)}>📤 Exportar</button>
           <button className="btn" style={{ background: 'rgba(79,124,255,0.12)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
             onClick={() => { setImportStep('upload'); setShowImport(true) }}>📥 Importar</button>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Nueva compra</button>
+          <button className="btn btn-primary" onClick={openNew}>+ Nueva compra</button>
         </div>
       </div>
 
@@ -359,6 +411,13 @@ export default function Tarjetas() {
             <option value="Pagado">Pagado</option>
           </select>
           <span style={{ color: 'var(--text2)', fontSize: 14 }}>{filtrados.length} registros</span>
+
+          {/* Acciones selección múltiple */}
+          {selected.size > 0 && (
+            <button className="btn btn-danger btn-sm" onClick={deleteSelected}>
+              🗑 Eliminar {selected.size} seleccionado{selected.size > 1 ? 's' : ''}
+            </button>
+          )}
         </div>
 
         {filtrados.length === 0 ? (
@@ -367,26 +426,42 @@ export default function Tarjetas() {
           <div className="table-wrap">
             <table>
               <thead><tr>
+                <th style={{ width: 36 }}>
+                  <input type="checkbox"
+                    checked={selected.size === filtrados.length && filtrados.length > 0}
+                    onChange={toggleSelectAll}
+                    style={{ cursor: 'pointer' }} />
+                </th>
                 <th>Fecha compra</th><th>Tarjeta</th><th>Descripción</th><th>Categoría</th>
                 <th>Valor cuota</th><th>Mes a pagar</th><th>Estado</th><th></th>
               </tr></thead>
               <tbody>
                 {filtrados.map(i => (
-                  <tr key={i.id}>
+                  <tr key={i.id} style={{ background: selected.has(i.id) ? 'rgba(239,68,68,0.08)' : '' }}>
+                    <td>
+                      <input type="checkbox"
+                        checked={selected.has(i.id)}
+                        onChange={() => toggleSelect(i.id)}
+                        style={{ cursor: 'pointer' }} />
+                    </td>
                     <td>{new Date(i.fecha_compra).toLocaleDateString('es-AR')}</td>
                     <td><span className={`badge ${i.tarjeta === 'BBVA' ? 'bbva' : 'mp'}`}>{i.tarjeta}</span></td>
-                    <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.descripcion}</td>
+                    <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.descripcion}</td>
                     <td style={{ fontSize: 13, color: 'var(--text2)' }}>{i.categoria}</td>
                     <td><span className="monto-neg">{fmt(i.valor_cuota)}</span></td>
                     <td style={{ fontSize: 13, fontWeight: 600 }}>{i.mes_a_pagar}</td>
                     <td>
                       <button className={`badge ${i.estado === 'Pendiente' ? 'pendiente' : 'pagado'}`}
                         style={{ cursor: 'pointer', border: 'none' }}
-                        onClick={() => toggleEstado(i)} title="Clic para cambiar estado">
+                        onClick={() => toggleEstado(i)}>
                         {i.estado}
                       </button>
                     </td>
-                    <td><button className="btn btn-danger btn-sm" onClick={() => del(i.id)}>🗑</button></td>
+                    <td style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-sm" style={{ background: 'rgba(79,124,255,0.12)', color: 'var(--accent)', border: 'none' }}
+                        onClick={() => openEdit(i)}>✏️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => del(i.id)}>🗑</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -422,11 +497,11 @@ export default function Tarjetas() {
         </div>
       )}
 
-      {/* Modal nueva compra */}
+      {/* Modal nueva / editar compra */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal">
-            <div className="modal-title">Nueva compra con tarjeta</div>
+            <div className="modal-title">{editItem ? 'Editar registro' : 'Nueva compra con tarjeta'}</div>
             <div className="form-grid">
               <div className="form-group">
                 <label className="form-label">Fecha compra *</label>
@@ -443,7 +518,7 @@ export default function Tarjetas() {
               </div>
               <div className="form-group form-full">
                 <label className="form-label">Descripción *</label>
-                <input type="text" className="form-input" placeholder="Ej: Supermercado Día"
+                <input type="text" className="form-input" placeholder="Ej: Supermercado"
                   value={form.descripcion} onChange={e => setForm({ ...form, descripcion: e.target.value })} />
               </div>
               <div className="form-group">
@@ -483,24 +558,34 @@ export default function Tarjetas() {
                 )}
               </>}
               <div className="form-group form-full">
-                <label className="form-label">Mes del primer pago</label>
+                <label className="form-label">{editItem ? 'Mes a pagar' : 'Mes del primer pago'}</label>
                 <select className="form-select" value={form.mes_inicio}
                   onChange={e => setForm({ ...form, mes_inicio: e.target.value })}>
                   {MESES_LIST.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-              {form.tipo_pago === 'Cuotas' && Number(form.cuotas) > 1 && (
+              {editItem && (
+                <div className="form-group form-full">
+                  <label className="form-label">Estado</label>
+                  <select className="form-select" value={form.estado || 'Pendiente'}
+                    onChange={e => setForm({ ...form, estado: e.target.value })}>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Pagado">Pagado</option>
+                  </select>
+                </div>
+              )}
+              {!editItem && form.tipo_pago === 'Cuotas' && Number(form.cuotas) > 1 && (
                 <div className="form-group form-full" style={{ background: 'rgba(79,124,255,0.08)', borderRadius: 8, padding: '10px 12px' }}>
                   <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-                    ✅ Se van a crear <strong style={{ color: 'var(--accent)' }}>{form.cuotas} filas</strong> automáticamente desde <strong style={{ color: 'var(--accent)' }}>{form.mes_inicio}</strong>
+                    ✅ Se van a crear <strong style={{ color: 'var(--accent)' }}>{form.cuotas} filas</strong> desde <strong style={{ color: 'var(--accent)' }}>{form.mes_inicio}</strong>
                   </div>
                 </div>
               )}
             </div>
             <div className="form-actions">
-              <button className="btn btn-danger" onClick={() => setShowModal(false)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => { setShowModal(false); setEditItem(null) }}>Cancelar</button>
               <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Guardando...' : `Guardar${form.tipo_pago === 'Cuotas' && Number(form.cuotas) > 1 ? ` (${form.cuotas} cuotas)` : ''}`}
+                {saving ? 'Guardando...' : editItem ? 'Actualizar' : `Guardar${form.tipo_pago === 'Cuotas' && Number(form.cuotas) > 1 ? ` (${form.cuotas} cuotas)` : ''}`}
               </button>
             </div>
           </div>
@@ -516,16 +601,15 @@ export default function Tarjetas() {
             {importStep === 'upload' && (
               <>
                 <div style={{ background: 'var(--bg3)', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 6 }}>Columnas del CSV:</div>
+                  <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 6 }}>Columnas del CSV (separadas por punto y coma):</div>
                   <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--accent)', lineHeight: 1.8 }}>
-                    Fecha Compra | Tarjeta | Descripción | Categoría | Tipo de Pago | Monto Total | Cuotas | Valor Cuota | Mes a Pagar | Estado
+                    Fecha Compra ; Tarjeta ; Descripcion ; Categoria ; Tipo de Pago ; Monto Total ; Cuotas ; Valor Cuota ; Mes a Pagar ; Estado
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 8 }}>
                     • <strong>Tarjeta:</strong> BBVA o Mercado Pago<br/>
-                    • <strong>Tipo de Pago:</strong> Cuotas o Pago Único<br/>
-                    • <strong>Mes a Pagar:</strong> formato Marzo/26<br/>
-                    • <strong>Estado:</strong> Pendiente o Pagado<br/>
-                    • Cada cuota va en una fila separada con su mes correspondiente
+                    • <strong>Tipo de Pago:</strong> Cuotas o Pago Unico<br/>
+                    • <strong>Mes a Pagar:</strong> Abril/26, Mayo/26, etc.<br/>
+                    • Cada cuota va en una fila separada con su mes
                   </div>
                 </div>
                 <div style={{ marginBottom: 16 }}>
@@ -556,10 +640,9 @@ export default function Tarjetas() {
                     </div>
                   )}
                 </div>
-
                 {erroresCount > 0 && (
                   <div style={{ background: 'rgba(239,68,68,0.08)', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Filas con errores (no se importarán):</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Filas con errores:</div>
                     {preview.filter(r => r.estado_import === 'error').map((r, i) => (
                       <div key={i} style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>
                         • {r.errores.join(', ')} — <em>{r.raw?.descripcion || r.raw?.fecha_compra}</em>
@@ -567,7 +650,6 @@ export default function Tarjetas() {
                     ))}
                   </div>
                 )}
-
                 <div className="table-wrap" style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
                   <table>
                     <thead><tr><th>Tarjeta</th><th>Descripción</th><th>Valor cuota</th><th>Mes</th><th>Estado</th></tr></thead>
@@ -584,7 +666,6 @@ export default function Tarjetas() {
                     </tbody>
                   </table>
                 </div>
-
                 <div className="form-actions">
                   <button className="btn btn-danger" onClick={() => setImportStep('upload')}>← Volver</button>
                   <button className="btn btn-primary" onClick={confirmImport} disabled={importing || validosCount === 0}>
@@ -599,7 +680,7 @@ export default function Tarjetas() {
                 <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
                 <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>¡Importación exitosa!</div>
                 <div style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 24 }}>
-                  Se importaron <strong>{validosCount}</strong> registros correctamente.
+                  Se importaron <strong>{validosCount}</strong> registros.
                 </div>
                 <button className="btn btn-primary" onClick={resetImport}>Cerrar</button>
               </div>
