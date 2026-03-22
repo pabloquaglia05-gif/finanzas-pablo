@@ -229,7 +229,24 @@ export default function Tarjetas() {
         mes_a_pagar: form.mes_inicio,
         estado: form.estado || 'Pendiente'
       }).eq('id', editItem.id)
-      if (!error) { setShowModal(false); setEditItem(null); setForm(EMPTY_FORM); load() }
+      if (!error) {
+        setShowModal(false); setEditItem(null); setForm(EMPTY_FORM); setFiltroMes('')
+        // Update local state immediately
+        setItems(prev => prev.map(i => i.id === editItem.id ? {
+          ...i,
+          fecha_compra: form.fecha_compra,
+          tarjeta: form.tarjeta,
+          descripcion: form.descripcion,
+          categoria: form.categoria,
+          tipo_pago: form.tipo_pago,
+          monto_total: Number(form.monto_total),
+          cuotas: Number(form.cuotas),
+          valor_cuota: Math.round((Number(form.monto_total) / Number(form.cuotas)) * 100) / 100,
+          mes_a_pagar: form.mes_inicio,
+          estado: form.estado || 'Pendiente'
+        } : i))
+        load()
+      }
       else alert('Error: ' + error.message)
     } else {
       // Nueva compra — generar una fila por cuota
@@ -257,7 +274,8 @@ export default function Tarjetas() {
   const toggleEstado = async (item) => {
     const nuevo = item.estado === 'Pendiente' ? 'Pagado' : 'Pendiente'
     await supabase.from('tarjeta_credito').update({ estado: nuevo }).eq('id', item.id)
-    load()
+    // Update local state immediately for instant UI feedback
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, estado: nuevo } : i))
   }
 
   // ── SELECCIÓN MÚLTIPLE ───────────────────────────────────────
