@@ -86,15 +86,14 @@ function parseEstado(str) {
 function parseMesAPagar(str) {
   if (!str) return null
   str = String(str).trim()
+  // Must match exactly: Word/NN or Word/NNNN
+  const m = str.match(/^([A-Za-z]+)\/([0-9]{2,4})$/)
+  if (!m) return null
+  const mesRaw = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
+  const anio = m[2].length === 4 ? m[2].slice(2) : m[2]
   const normalize = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  const parts = str.split("/")
-  if (parts.length < 2) return null
-  const mesRaw = parts[0].trim()
-  const anioRaw = parts[parts.length - 1].trim()
-  const mesNorm = normalize(mesRaw).charAt(0).toUpperCase() + normalize(mesRaw).slice(1).toLowerCase()
-  const mesIdx = MESES.findIndex(m => normalize(m).toLowerCase() === mesNorm.toLowerCase())
+  const mesIdx = MESES.findIndex(mes => normalize(mes).toLowerCase() === normalize(mesRaw).toLowerCase())
   if (mesIdx === -1) return null
-  const anio = anioRaw.length === 4 ? anioRaw.slice(2) : anioRaw.padStart(2, "0")
   return MESES[mesIdx] + "/" + anio
 }
 
