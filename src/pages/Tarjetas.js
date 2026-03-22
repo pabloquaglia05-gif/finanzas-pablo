@@ -401,7 +401,11 @@ export default function Tarjetas() {
           </select>
           <select className="filter-select" value={filtroMes} onChange={e => setFiltroMes(e.target.value)}>
             <option value="">Todos los meses</option>
-            {[...new Set(items.map(i => i.mes_a_pagar))].sort().map(m => (
+            {[...new Set(items.map(i => i.mes_a_pagar))].sort((a, b) => {
+                const MESES_ORD = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+                const [mA, yA] = a.split('/'); const [mB, yB] = b.split('/')
+                return yA !== yB ? parseInt(yA) - parseInt(yB) : MESES_ORD.indexOf(mA) - MESES_ORD.indexOf(mB)
+              }).map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
