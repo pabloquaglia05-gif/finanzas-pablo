@@ -86,15 +86,20 @@ function parseEstado(str) {
 function parseMesAPagar(str) {
   if (!str) return null
   str = String(str).trim()
-  // Must match exactly: Word/NN or Word/NNNN
-  const m = str.match(/^([A-Za-z]+)\/([0-9]{2,4})$/)
-  if (!m) return null
-  const mesRaw = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
-  const anio = m[2].length === 4 ? m[2].slice(2) : m[2]
-  const normalize = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-  const mesIdx = MESES.findIndex(mes => normalize(mes).toLowerCase() === normalize(mesRaw).toLowerCase())
-  if (mesIdx === -1) return null
-  return MESES[mesIdx] + "/" + anio
+  if (!str) return null
+  // Accept any format — just clean it up
+  // Try to match Mes/YY or Mes/YYYY
+  const m = str.match(/^([A-Za-zÁÉÍÓÚáéíóúñÑ]+)[\s\/\-]+([0-9]{2,4})$/)
+  if (m) {
+    const mesRaw = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()
+    const anio = m[2].length === 4 ? m[2].slice(2) : m[2].padStart(2, "0")
+    const normalize = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    const mesIdx = MESES.findIndex(mes => normalize(mes).toLowerCase() === normalize(mesRaw).toLowerCase())
+    if (mesIdx >= 0) return MESES[mesIdx] + "/" + anio
+  }
+  // If it already looks like a valid entry just return it as-is
+  if (str.includes("/")) return str
+  return null
 }
 
 function parseCSV(text) {
@@ -132,7 +137,7 @@ function parseCSV(text) {
       monto_total:  get(['montototal','total','monto'], 5),
       cuotas:       get(['cuota'], 6),
       valor_cuota:  get(['valorcuota','valor'], 7),
-      mes_a_pagar:  get(['mesapagar','mes'], 8),
+      mes_a_pagar:  cols[8] || get(['mesapagar','mes','pagar'], 8),
       estado:       get(['estado','status'], 9),
     })
   }
