@@ -96,6 +96,13 @@ export default function Categorias() {
 
   const save = async () => {
     if (!form.nombre.trim()) return alert('Ingresá un nombre')
+    const nombreLower = form.nombre.trim().toLowerCase()
+    const duplicado = categorias.find(c =>
+      c.nombre.toLowerCase() === nombreLower &&
+      c.tipo === form.tipo &&
+      (!editItem || c.id !== editItem.id)
+    )
+    if (duplicado) return alert(`Ya existe una categoría de ${form.tipo} llamada "${duplicado.nombre}"`)
     setSaving(true)
     if (editItem) {
       const { error } = await supabase.from('categorias').update({ nombre: form.nombre.trim(), tipo: form.tipo }).eq('id', editItem.id)
