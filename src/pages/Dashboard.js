@@ -36,7 +36,7 @@ export default function Dashboard() {
 
   // Movimientos del mes
   const movMes = movimientos.filter(m => {
-    const d = new Date(m.fecha)
+    const d = new Date(m.fecha + 'T12:00:00')
     return d.getFullYear() === anio && d.getMonth() === mes
   })
 
@@ -71,7 +71,7 @@ export default function Dashboard() {
     if (m < 0) { m += 12; y-- }
     const mk = `${MESES[m]}/${String(y).slice(2)}`
     const movs = movimientos.filter(mv => {
-      const d = new Date(mv.fecha)
+      const d = new Date(mv.fecha + 'T12:00:00')
       return d.getFullYear() === y && d.getMonth() === m
     })
     const tcMesG = tarjetas.filter(t => t.mes_a_pagar === mk)
@@ -182,7 +182,7 @@ export default function Dashboard() {
               <tbody>
                 {ultimos.map(m => (
                   <tr key={m.id}>
-                    <td>{new Date(m.fecha).toLocaleDateString('es-AR')}</td>
+                    <td>{new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-AR')}</td>
                     <td>{m.descripcion}</td>
                     <td>{m.categoria}</td>
                     <td><span className={`badge ${m.tipo.toLowerCase()}`}>{m.tipo}</span></td>
