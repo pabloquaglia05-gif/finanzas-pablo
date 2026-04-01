@@ -20,7 +20,7 @@ function siguienteMes(mesStr) {
 function exportToCSV(items) {
   const headers = ['Fecha Compra','Tarjeta','Descripcion','Categoria','Tipo de Pago','Monto Total','Cuotas','Valor Cuota','Mes a Pagar','Estado']
   const rows = items.map(i => [
-    new Date(i.fecha_compra).toLocaleDateString('es-AR'),
+    new Date(i.fecha_compra + 'T12:00:00').toLocaleDateString('es-AR'),
     i.tarjeta, i.descripcion, i.categoria, i.tipo_pago,
     i.monto_total, i.cuotas, i.valor_cuota, i.mes_a_pagar, i.estado
   ])
@@ -466,7 +466,7 @@ export default function Tarjetas() {
                         onChange={() => toggleSelect(i.id)}
                         style={{ cursor: 'pointer' }} />
                     </td>
-                    <td>{new Date(i.fecha_compra).toLocaleDateString('es-AR')}</td>
+                    <td>{new Date(i.fecha_compra + 'T12:00:00').toLocaleDateString('es-AR')}</td>
                     <td><span className={`badge ${i.tarjeta === 'BBVA' ? 'bbva' : 'mp'}`}>{i.tarjeta}</span></td>
                     <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.descripcion}</td>
                     <td style={{ fontSize: 13, color: 'var(--text2)' }}>{i.categoria}</td>
