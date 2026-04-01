@@ -10,7 +10,7 @@ function fmt(n) {
 function exportToCSV(data, filename) {
   const headers = ['Fecha', 'Descripción', 'Categoría', 'Tipo', 'Monto', 'Notas']
   const rows = data.map(m => [
-    new Date(m.fecha).toLocaleDateString('es-AR'),
+    new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-AR'),
     m.descripcion, m.categoria, m.tipo, m.monto, m.notas || ''
   ])
   const csvContent = [headers, ...rows]
@@ -138,12 +138,12 @@ export default function Registro() {
 
   const movFiltrados = movimientos
     .filter(m => {
-      const d = new Date(m.fecha)
+      const d = new Date(m.fecha + 'T12:00:00')
       const okMes = d.getFullYear() === anio && d.getMonth() === mes
       const okTipo = filtroTipo === 'Todos' || m.tipo === filtroTipo
       return okMes && okTipo
     })
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+    .sort((a, b) => new Date(b.fecha + 'T12:00:00') - new Date(a.fecha + 'T12:00:00'))
 
   const totalIngresos = movFiltrados.filter(m => m.tipo === 'Ingreso').reduce((a, b) => a + Number(b.monto), 0)
   const totalGastos = movFiltrados.filter(m => m.tipo === 'Gasto').reduce((a, b) => a + Number(b.monto), 0)
@@ -303,7 +303,7 @@ export default function Registro() {
             <tbody>
               {movFiltrados.map(m => (
                 <tr key={m.id}>
-                  <td>{new Date(m.fecha).toLocaleDateString('es-AR')}</td>
+                  <td>{new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-AR')}</td>
                   <td>{m.descripcion}</td>
                   <td>{m.categoria}</td>
                   <td><span className={`badge ${m.tipo.toLowerCase()}`}>{m.tipo}</span></td>
@@ -441,7 +441,7 @@ export default function Registro() {
                       <tbody>
                         {preview.map((r, i) => (
                           <tr key={i}>
-                            <td style={{ fontSize: 12 }}>{new Date(r.fecha).toLocaleDateString('es-AR')}</td>
+                            <td style={{ fontSize: 12 }}>{new Date(r.fecha + 'T12:00:00').toLocaleDateString('es-AR')}</td>
                             <td style={{ fontSize: 12 }}>{r.descripcion}</td>
                             <td style={{ fontSize: 12 }}>{r.categoria}</td>
                             <td><span className={`badge ${r.tipo.toLowerCase()}`} style={{ fontSize: 11 }}>{r.tipo}</span></td>
