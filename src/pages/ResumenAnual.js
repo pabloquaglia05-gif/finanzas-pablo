@@ -29,7 +29,7 @@ export default function ResumenAnual() {
     load()
   }, [])
 
-  const movAnio = movimientos.filter(m => new Date(m.fecha).getFullYear() === anio)
+  const movAnio = movimientos.filter(m => new Date(m.fecha + 'T12:00:00').getFullYear() === anio)
 
   // Helper: gastos de tarjeta de un mes específico
   const gastosTC = (mesIdx) => {
@@ -41,7 +41,7 @@ export default function ResumenAnual() {
 
   // Datos mensuales incluyendo tarjetas
   const mensual = MESES.map((mes, idx) => {
-    const movs = movAnio.filter(m => new Date(m.fecha).getMonth() === idx)
+    const movs = movAnio.filter(m => new Date(m.fecha + 'T12:00:00').getMonth() === idx)
     const ing = movs.filter(m => m.tipo === 'Ingreso').reduce((a, b) => a + Number(b.monto), 0)
     const gasMov = movs.filter(m => m.tipo === 'Gasto').reduce((a, b) => a + Number(b.monto), 0)
     const gasTC = gastosTC(idx)
@@ -67,7 +67,7 @@ export default function ResumenAnual() {
 
   movAnio.forEach(m => {
     if (!porCat[m.categoria]) porCat[m.categoria] = { tipo: m.tipo, meses: Array(12).fill(0), total: 0 }
-    const idx = new Date(m.fecha).getMonth()
+    const idx = new Date(m.fecha + 'T12:00:00').getMonth()
     porCat[m.categoria].meses[idx] += Number(m.monto)
     porCat[m.categoria].total += Number(m.monto)
   })
