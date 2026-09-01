@@ -11,6 +11,7 @@ const PAGES = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'registro', label: 'Registro', icon: '📝' },
   { id: 'tarjetas', label: 'Tarjetas', icon: '💳' },
+  { id: 'ahorros', label: 'Ahorros', icon: '💰' },
   { id: 'anual', label: 'Resumen Anual', icon: '📅' },
   { id: 'categorias', label: 'Categorías', icon: '🏷️' },
 ]
@@ -24,6 +25,7 @@ export default function App() {
       case 'dashboard': return <Dashboard />
       case 'registro': return <Registro />
       case 'tarjetas': return <Tarjetas />
+      case 'ahorros': return <Ahorros />
       case 'anual': return <ResumenAnual />
       case 'categorias': return <Categorias />
       default: return <Dashboard />
