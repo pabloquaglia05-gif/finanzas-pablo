@@ -4,6 +4,7 @@ import Registro from './pages/Registro'
 import Tarjetas from './pages/Tarjetas'
 import ResumenAnual from './pages/ResumenAnual'
 import Categorias from './pages/Categorias'
+import Ahorros from './pages/Ahorros'
 import './App.css'
 
 const PAGES = [
