@@ -21,7 +21,7 @@ function exportToCSV(data) {
   URL.revokeObjectURL(url)
 }
 
-const TIPOS = ['FCI USD', 'FCI ARS', 'Plazo Fijo']
+const TIPOS = ['FCI USD', 'FCI ARS', 'Plazo Fijo', 'Tenencia USD']
 const MOVIMIENTOS = ['Suscripcion', 'Rescate', 'Interes', 'Vencimiento']
 
 const EMPTY_FORM = {
@@ -79,10 +79,13 @@ export default function Ahorros() {
   const interesesFCIars = calcIntereses('FCI ARS', 'ARS')
   const totalPF = calcSaldo('Plazo Fijo', 'ARS')
   const interesesPF = calcIntereses('Plazo Fijo', 'ARS')
+  const totalUSD = calcSaldo('Tenencia USD', 'USD')
+  const interesesUSD = calcIntereses('Tenencia USD', 'USD')
 
   // Agrupar por plataforma/descripción para el resumen
   const resumenFCIusd = {}
   const resumenFCIars = {}
+  const resumenUSD = {}
   const resumenPF = {}
 
   movimientos.forEach(m => {
@@ -104,6 +107,12 @@ export default function Ahorros() {
       if (m.movimiento === 'Suscripcion') resumenPF[key].capital += Number(m.monto)
       if (m.movimiento === 'Vencimiento') resumenPF[key].capital -= Number(m.monto)
       if (m.movimiento === 'Interes') resumenPF[key].intereses += Number(m.monto)
+    }
+    if (m.tipo === 'Tenencia USD') {
+      if (!resumenUSD[key]) resumenUSD[key] = { capital: 0, intereses: 0, plataforma: m.plataforma }
+      if (m.movimiento === 'Suscripcion') resumenUSD[key].capital += Number(m.monto)
+      if (m.movimiento === 'Rescate') resumenUSD[key].capital -= Number(m.monto)
+      if (m.movimiento === 'Interes') resumenUSD[key].intereses += Number(m.monto)
     }
   })
 
@@ -210,14 +219,14 @@ export default function Ahorros() {
           {interesesPF > 0 && <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 4 }}>+ {fmt(interesesPF)} intereses</div>}
         </div>
         <div className="stat-card blue">
-          <div className="stat-label">Total intereses ARS</div>
-          <div className="stat-value green">{fmt(interesesFCIars + interesesPF)}</div>
-          {interesesFCIusd > 0 && <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>+ {fmt(interesesFCIusd, 'USD')} en USD</div>}
+          <div className="stat-label">Tenencia USD</div>
+          <div className="stat-value blue">{fmt(totalUSD, 'USD')}</div>
+          {interesesUSD > 0 && <div style={{ fontSize: 12, color: 'var(--green)', marginTop: 4 }}>+ {fmt(interesesUSD, 'USD')} intereses</div>}
         </div>
       </div>
 
       {/* Resumen por instrumento */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 24 }}>
 
         {/* FCI USD */}
         <div className="card">
@@ -252,6 +261,25 @@ export default function Ahorros() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>{fmt(val.capital)}</div>
                 {val.intereses > 0 && <div style={{ fontSize: 12, color: 'var(--green)' }}>+{fmt(val.intereses)}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tenencia USD */}
+        <div className="card">
+          <div className="section-title" style={{ color: '#38bdf8' }}>💵 Tenencia USD</div>
+          {Object.keys(resumenUSD).length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text2)', padding: '12px 0' }}>Sin registros</div>
+          ) : Object.entries(resumenUSD).map(([key, val]) => (
+            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{val.plataforma}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{key.split(' — ')[0]}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#38bdf8' }}>{fmt(val.capital, 'USD')}</div>
+                {val.intereses > 0 && <div style={{ fontSize: 12, color: 'var(--green)' }}>+{fmt(val.intereses, 'USD')}</div>}
               </div>
             </div>
           ))}
